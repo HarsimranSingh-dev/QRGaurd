@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRGuard - Quishing Defense Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="max-w-xl w-full bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700">
+        <h1 class="text-3xl font-extrabold text-red-500 mb-2">QRGuard</h1>
+        <p class="text-gray-400 mb-6">Advanced Quishing Detection & Local Threat Response Engine</p>
+        
+        <form id="uploadForm" class="space-y-4">
+            <div class="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center hover:border-red-500 transition cursor-pointer">
+                <input type="file" id="qrFile" accept="image/*" class="hidden" required>
+                <label for="qrFile" class="cursor-pointer">
+                    <span class="block text-lg font-medium">Drop your QR code image here</span>
+                    <span class="text-sm text-gray-500">or click to browse</span>
+                </label>
+            </div>
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition">
+                Analyze & Defend
+            </button>
+        </form>
+
+        <div id="resultBox" class="mt-6 hidden bg-gray-900 p-4 rounded-xl border border-gray-700 space-y-3">
+            <h2 class="text-xl font-bold text-gray-200">Analysis Results</h2>
+            <p><strong>Extracted URL:</strong> <span id="resUrl" class="text-blue-400 break-all"></span></p>
+            <div class="bg-gray-800 p-3 rounded text-sm whitespace-pre-line" id="resAi"></div>
+            <div id="defenseSection" class="hidden">
+                <h3 class="font-bold text-red-400 mt-2">Active Defense Actions:</h3>
+                <ul id="resDefense" class="list-disc list-inside text-sm text-gray-300 space-y-1"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('qrFile');
+            if (!fileInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const submitBtn = form.querySelector('button');
+            submitBtn.textContent = 'Analyzing...';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/scan', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    document.getElementById('resultBox').classList.remove('hidden');
+                    document.getElementById('resUrl').textContent = data.url;
+                    document.getElementById('resAi').textContent = data.ai_analysis;
+                    
+                    const defenseUl = document.getElementById('resDefense');
+                    defenseUl.innerHTML = '';
+                    if (data.defense_actions && data.defense_actions.length > 0) {
+                        document.getElementById('defenseSection').classList.remove('hidden');
+                        data.defense_actions.forEach(action => {
+                            const li = document.createElement('li');
+                            li.textContent = action;
+                            defenseUl.appendChild(li);
+                        });
+                    } else {
+                        document.getElementById('defenseSection').classList.add('hidden');
+                    }
+                } else {
+                    alert(data.error || 'Something went wrong');
+                }
+            } catch (err) {
+                alert('Error communicating with server');
+            } finally {
+                submitBtn.textContent = 'Analyze & Defend';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
